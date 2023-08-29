@@ -21,7 +21,9 @@ from app.models import Contact
 
 
 ### Using ModelSerializers
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(serializers.HyperlinkedModelSerializer):
+    owner = serializers.ReadOnlyField(source="owner.username")
+
     class Meta:
         model = Contact
-        fields = ["name", "title", "email"]
+        fields = ["name", "title", "email", "url", "owner"]
