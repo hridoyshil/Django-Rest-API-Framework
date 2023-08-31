@@ -1,79 +1,33 @@
-from django.shortcuts import render
-
-
-# Create your views here.
-from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.parsers import JSONParser
-from app.models import Contact
+from django.shortcuts import get_object_or_404
 from app.serializers import ContactSerializer
-from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework import viewsets
 from rest_framework.response import Response
-from django.http import Http404
-from rest_framework.views import APIView
-from rest_framework import mixins
-from rest_framework import generics
-from rest_framework.authentication import (
-    SessionAuthentication,
-    BasicAuthentication,
-    TokenAuthentication,
-)
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.authtoken.models import Token
-from rest_framework.reverse import reverse
+from app.models import Contact
+from rest_framework import status
 
 
-@api_view(["GET"])
-def api_root(request, format=None):
-    return Response(
-        {
-            "contact": reverse("contact-list", request=request, format=format),
-        }
-    )
+class ContactViewSet(viewsets.ViewSet):
+    def list(self, request):
+        queryset = Contact.objects.all()
+        serializer = ContactSerializer(queryset, many=True)
+        return Response(serializer.data)
 
+    def retrieve(self, request, pk=None):
+        queryset = Contact.objects.all()
+        contact = get_object_or_404(queryset, pk=pk)
+        serializer = ContactSerializer(contact)
+        return Response(serializer.data)
 
-##The generic views provided by REST framework allow you to quickly build API views that map closely to your database models.
-##Using mixins / Using generic class-based views
-class ContactList(
-    generics.ListCreateAPIView,
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    generics.GenericAPIView,
-):
-    queryset = Contact.objects.all()
-    serializer_class = ContactSerializer
+    def create(self, request):
+        serializer = ContactSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    ###BasicAuthentication
-    # authentication_classes = [SessionAuthentication, BasicAuthentication]
-    # permission_classes = [IsAuthenticated]
-
-    ###TokenAuthentication
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        return self.list(request)
-
-    def post(self, request):
-        return self.create(request)
-
-
-class ContactDetail(
-    generics.RetrieveUpdateDestroyAPIView,
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.DestroyModelMixin,
-    generics.GenericAPIView,
-):
-    queryset = Contact.objects.all()
-    serializer_class = ContactSerializer
-
-    def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
-
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-        return self.destroy(request, *args, **kwargs)
+    def update(self, request, pk=None):
+        contact = Contact.objects.get(pk=pk)
+        serializer = ContactSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
